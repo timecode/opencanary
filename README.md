@@ -1,4 +1,4 @@
-# OpenCanary by Thinkst Canary
+# Fork of OpenCanary by Thinkst Canary
 
 <img src="https://raw.githubusercontent.com/thinkst/opencanary/master/docs/logo.png" width="50" style="float: left"> OpenCanary is a multi-protocol network honeypot. It's primary use-case is to catch hackers after they've breached non-public networks. It has extremely low resource requirements and can be tweaked, modified, and extended.
 
@@ -17,6 +17,7 @@ This README describes how to install and configure OpenCanary on Ubuntu Linux an
 OpenCanary is the Open Source version of our commercial [Thinkst Canary](https://canary.tools) honeypot.
 
 ## Table of Contents
+
 - **[Prerequisites](#prerequisites)**
 - **[Features](#features)**
 - **[Installation](#installation)**
@@ -28,9 +29,9 @@ OpenCanary is the Open Source version of our commercial [Thinkst Canary](https:/
   - [Creating the initial configuration](#creating-the-initial-configuration)
   - [Enabling protocol modules and alerting](#enabling-protocol-modules-and-alerting)
   - [Optional modules](#optional-modules)
-     - [SNMP](#snmp)
-     - [Portscan](#portscan)
-     - [Samba Setup](#samba-setup)
+    - [SNMP](#snmp)
+    - [Portscan](#portscan)
+    - [Samba Setup](#samba-setup)
 - **[Running OpenCanary](#running-opencanary)**
   - [Directly on Linux or macOS](#directly-on-linux-or-macos)
   - [With docker-compose](#with-docker-compose)
@@ -45,16 +46,16 @@ OpenCanary is the Open Source version of our commercial [Thinkst Canary](https:/
 
 ## Prerequisites
 
-* AMD64: Python 3.7 (Recommended Python 3.7+)
-* ARM64: Python 3.9+
-* _Optional_ SNMP requires the Python library Scapy
-* _Optional_ Samba module needs a working installation of Samba
-* _Optional_ Portscan uses iptables (not nftables) and is only supported on Linux-based operating systems
+- AMD64: Python 3.7 (Recommended Python 3.7+)
+- ARM64: Python 3.9+
+- _Optional_ SNMP requires the Python library Scapy
+- _Optional_ Samba module needs a working installation of Samba
+- _Optional_ Portscan uses iptables (not nftables) and is only supported on Linux-based operating systems
 
 ## Features
 
-* Mimic an array of network-accessible services for attackers to interact with.
-* Receive various alerts as soon as potential threats are detected, highlighting the threat source IP address and where the breach may have occurred.
+- Mimic an array of network-accessible services for attackers to interact with.
+- Receive various alerts as soon as potential threats are detected, highlighting the threat source IP address and where the breach may have occurred.
 
 ## Installation
 
@@ -63,51 +64,58 @@ The OpenCanary installation essentially involves ensuring the Python environment
 ### Installation on Ubuntu
 
 Installation on Ubuntu 22.04 LTS or 24.04 LTS:
-```
-$ sudo apt-get install python3-dev python3-pip python3-virtualenv python3-venv python3-scapy libssl-dev libpcap-dev
-$ virtualenv env/
-$ . env/bin/activate
-$ pip install opencanary
+
+```sh
+sudo apt-get install python3-dev python3-pip python3-virtualenv python3-venv python3-scapy libssl-dev libpcap-dev
+virtualenv env/
+. env/bin/activate
+pip install opencanary
 ```
 
 Optional extras (if you wish to use the Windows File Share module, and the SNMP module):
-```
-$ sudo apt install samba # if you plan to use the Windows File Share module
-$ pip install scapy pcapy-ng # if you plan to use the SNMP module
+
+```sh
+sudo apt install samba # if you plan to use the Windows File Share module
+pip install scapy pcapy-ng # if you plan to use the SNMP module
 ```
 
 ### Installation on macOS
 
 First, create and activate a new Python virtual environment:
-```
-$ virtualenv env/
-$ . env/bin/activate
+
+```sh
+virtualenv env/
+. env/bin/activate
 ```
 
 Macports users should then run:
-```
-$ sudo port install openssl
-$ env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/opt/local/lib" CFLAGS="-I/opt/local/include" pip install cryptography
+
+```sh
+sudo port install openssl
+env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/opt/local/lib" CFLAGS="-I/opt/local/include" pip install cryptography
 ```
 
 Alternatively, Homebrew x86 users run:
-````
-$ brew install openssl
-$ env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography
-````
+
+```sh
+brew install openssl
+env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography
+```
 
 Homebrew M1 users run:
-```
-$ brew install openssl
-$ env ARCHFLAGS="-arch arm64" LDFLAGS="-L/opt/homebrew/opt/openssl@1.1/lib" CFLAGS="-I/opt/homebrew/opt/openssl@1.1/include" pip install cryptography
+
+```sh
+brew install openssl
+env ARCHFLAGS="-arch arm64" LDFLAGS="-L/opt/homebrew/opt/openssl@1.1/lib" CFLAGS="-I/opt/homebrew/opt/openssl@1.1/include" pip install cryptography
 ```
 
 (The compilation step above is necessary as multiple OpenSSL versions may exist, which can confound the Python libraries.)
 
 Now the installation can run as usual:
-```
-$ pip install opencanary
-$ pip install scapy pcapy-ng # optional
+
+```sh
+pip install opencanary
+pip install scapy pcapy-ng # optional
 ```
 
 The Windows File Share (smb) module is not available on macOS.
@@ -116,12 +124,12 @@ The Windows File Share (smb) module is not available on macOS.
 
 To install from source, instead of running pip do the following:
 
-```
-$ git clone https://github.com/thinkst/opencanary
-$ cd opencanary
-$ python setup.py sdist
-$ cd dist
-$ pip install opencanary-<version>.tar.gz
+```sh
+git clone https://github.com/thinkst/opencanary
+cd opencanary
+python setup.py sdist
+cd dist
+pip install opencanary-<version>.tar.gz
 ```
 
 ### Use via pkgx
@@ -129,8 +137,8 @@ $ pip install opencanary-<version>.tar.gz
 OpenCanary is packaged via [pkgx](https://pkgx.sh/), so no installation is needed if pkgx is installed, simply preface the `opencanaryd` command with
 `pkgx`. Due to environment variable protections in modern `sudo` implementations, the entire command must be run as root, or via `sudo -E`.
 
-```
-$ pkgx opencanaryd --version
+```sh
+pkgx opencanaryd --version
 ```
 
 ### Installation for Docker
@@ -148,7 +156,8 @@ When OpenCanary starts it looks for config files in the following locations and 
 3. `/etc/opencanaryd/opencanary.conf`
 
 To create an initial configuration, run as `root` (you may be prompted for a `sudo` password):
-```
+
+```sh
 $ opencanaryd --copyconfig
 [*] A sample config file is ready /etc/opencanaryd/opencanary.conf
 
@@ -185,9 +194,9 @@ OpenCanary is either run directly on a Linux or macOS host, or via a Docker cont
 
 Start OpenCanary by running:
 
-```
-$ . env/bin/activate
-$ opencanaryd --start --uid=nobody --gid=nogroup
+```sh
+. env/bin/activate
+opencanaryd --start --uid=nobody --gid=nogroup
 ```
 
 With the `uid` and `gid` flags, OpenCanary drops root privileges after binding to its ports. This can be changed to other low-privileged user/group or omitted to keep running with root privileges.
@@ -196,12 +205,11 @@ With the `uid` and `gid` flags, OpenCanary drops root privileges after binding t
 
 Start OpenCanary by running:
 
-```
-$ sudo -E pkgx opencanaryd --start --uid=nobody --gid=nogroup
+```sh
+sudo -E pkgx opencanaryd --start --uid=nobody --gid=nogroup
 ```
 
 With the `uid` and `gid` flags, OpenCanary drops root privileges after binding to its ports. This can be changed to other low-privileged user/group or omitted to keep running with root privileges.
-
 
 ### With docker-compose
 
@@ -213,6 +221,7 @@ The route requires [Docker](https://docs.docker.com/get-docker/) and [Docker Com
 1. Edit the `data/.opencanary.conf` file to enable, disable or customize the services that will run.
 1. Edit the `ports` section of the `docker-compose.yml` file to enable/disable the desired ports based on the services you have enabled in the config file.
 1. Run the container.
+
     ```bash
     docker-compose up latest
     ```
@@ -230,10 +239,11 @@ Please head over our dedicated Docker [wiki](https://github.com/thinkst/opencana
 ### With Ansible
 
 Please head over to our forked repository for an Ansible OpenCanary role over [here](https://github.com/thinkst/ansible-role-opencanary).
+
 ## Documentation
 
-* The [Wiki](https://github.com/thinkst/opencanary/wiki) contains our FAQ.
-* Additional documentation is available on our [main site](https://opencanary.org).
+- The [Wiki](https://github.com/thinkst/opencanary/wiki) contains our FAQ.
+- Additional documentation is available on our [main site](https://opencanary.org).
 
 ## Project Participation
 
@@ -242,7 +252,8 @@ Please head over to our forked repository for an Ansible OpenCanary role over [h
 We welcome PRs to this project. Please read our [Code of Conduct](https://github.com/thinkst/.github/blob/master/CODE_OF_CONDUCT.md) and [Contributing](https://github.com/thinkst/.github/blob/master/CONTRIBUTING.md) documents before submitting a pull request.
 
 At a minimum you should run `pre-commit` before submitting the PR. Install and run it in the same Python environment that OpenCanary is installed into:
-```
+
+```sh
 $ pip install pre-commit
 # Do work
 $ git add file
@@ -268,4 +279,4 @@ Feature requests are tracked [here](https://github.com/thinkst/opencanary/discus
 This project and everyone participating in it is governed by the
 [Code of Conduct](https://github.com/thinkst/.github/blob/master/CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior
-to github@thinkst.com.
+to <github@thinkst.com>.
