@@ -554,5 +554,53 @@ class TestRDPModule(unittest.TestCase):
         self.assertEqual(last_log["dst_port"], 3389)
 
 
+class TestHealthcheckModule(unittest.TestCase):
+    """
+    Tests the cases for the Healthcheck module.
+    The Healthcheck module should return a simple 'OK' for interaction of any
+    verb (HEAD, GET, POST, DELETE, etc). Nothing should be logged.
+    """
+
+    url = "http://localhost"
+    port = 1200
+    expected_response_code = 200
+    expected_response_text = "OK"
+    expected_server_header = "Healthcheck Test"
+
+    def check_healthcheck(self, method):
+        last_log_pre = get_last_log()
+        response = method(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_response_text, response.text)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log_post = get_last_log()
+        self.assertEqual(last_log_post, last_log_pre)
+
+    def test_head_healthcheck_response(self):
+        """Test the HEAD request to the healthcheck endpoint."""
+        last_log_pre = get_last_log()
+        response = requests.head(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log_post = get_last_log()
+        self.assertEqual(last_log_post, last_log_pre)
+
+    def test_get_healthcheck_response(self):
+        """Test the GET request to the healthcheck endpoint."""
+        self.check_healthcheck(requests.get)
+
+    def test_post_healthcheck_response(self):
+        """Test the POST request to the healthcheck endpoint."""
+        self.check_healthcheck(requests.post)
+
+    def test_delete_healthcheck_response(self):
+        """Test the DELETE request to the healthcheck endpoint."""
+        self.check_healthcheck(requests.delete)
+
+
 if __name__ == "__main__":
     unittest.main()
