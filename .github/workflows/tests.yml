@@ -1,0 +1,51 @@
+name: OpenCanary Fork Tests
+
+on:
+  - "push"
+
+env:
+  LOCAL_WORKFLOW: ${{ secrets.LOCAL_WORKFLOW == 'true' }}
+  PYTHON_LATEST: "3.14"
+
+jobs:
+
+  # latest only
+  opencanary-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Local only
+        if: ${{ env.LOCAL_WORKFLOW != 'true' }}
+        run: |
+          echo "Skipping... execution is LOCAL only"
+      - name: Checkout repository
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        uses: actions/checkout@v6
+      - name: Set up Python "${{ env.PYTHON_LATEST }}"
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_LATEST }}"
+      - name: Install setuptools
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: pip3 install setuptools>=63.2.0
+      - name: Install wheel
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: pip3 install wheel
+      - name: Create package
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: python3 setup.py sdist
+      - name: Install package
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: pip3 install dist/opencanary-*.tar.gz
+      - name: Install test dependencies
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: pip3 install -r opencanary/test/requirements.txt
+      - name: Copy config file
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: cp opencanary/test/opencanary.conf .
+      - name: Start OpenCanary
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: opencanaryd --start
+      - name: Run Pytest
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: pytest -s

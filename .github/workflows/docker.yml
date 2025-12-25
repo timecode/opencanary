@@ -1,0 +1,190 @@
+name: Docker
+
+on:
+  push:
+    # Only trigger on pushes that create or update tags matching the glob v*.*.*
+    tags: [ 'v*.*.*' ]
+    # ^ Publish semver tags as releases.
+
+env:
+
+  IMAGE_SIGNING: false
+  LOCAL_WORKFLOW: ${{ secrets.LOCAL_WORKFLOW == 'true' }}
+
+  IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
+  REGISTRY: ghcr.io                     # default: docker.io
+
+  V_FULL: ""                            # def (set below), examples: v1.2.3 | build-20251220-230408
+  V_MAJOR: ""                           # def (set below), examples: v1
+  V_MAJOR_MINOR: ""                     # def (set below), examples: v1.2
+  IMAGE_VERSION: ""                     # def (set below), examples: latest | dev
+  IMAGE_VERSION_DEV: "dev"              # default description/name to use
+
+jobs:
+  # Each job runs in a FRESH INSTANCE of the virtual environment specified by runs-on
+  build-and-publish:
+    # https://github.com/marketplace?type=actions
+    name: build and deploy docker image to registry
+
+    runs-on: ubuntu-latest
+    # ^ https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md
+    # For full list of runners, see
+    # https://github.com/actions/runner-images/tree/main/images/ubuntu
+    # https://github.com/actions/runner-images/tree/main/images/macos
+    # https://github.com/actions/runner-images/tree/main/images/win
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      # ^ this is used to complete the identity challenge with sigstore/fulcio
+
+    steps:
+
+      - name: platform details
+        run: |
+          uname -a
+
+      # - name: set env.LOCAL_WORKFLOW based on ACT
+      #   run: |
+      #     echo "LOCAL_WORKFLOW=${{ env.ACT }}" >> $GITHUB_ENV
+
+      - name: set env.IMAGE_SIGNING based on LOCAL_WORKFLOW
+        if: ${{ env.IMAGE_SIGNING == 'true' }}
+        run: |
+          if [[ "${LOCAL_WORKFLOW}" == "true" ]]; then
+            echo "IMAGE_SIGNING=false" >> $GITHUB_ENV
+          fi
+
+      - name: Determine Image Tags
+        run: |
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+)([+-][0-9A-Za-z+-.]*)?$ ]]; then
+
+            V_MAJOR="${BASH_REMATCH[1]}"
+            V_MINOR="${BASH_REMATCH[2]}"
+            V_PATCH="${BASH_REMATCH[3]}"
+            V_BUILD_METADATA="${BASH_REMATCH[4]}"
+
+            # Replace leading + with '.post' if it exists (as docker/metadata-action insists on replacing `+` with `-`)
+            if [[ "${V_BUILD_METADATA}" == +* ]]; then
+                V_BUILD_METADATA=".post${V_BUILD_METADATA:1}"
+            fi
+
+            if [[ "${V_MAJOR}" -ne 0 ]]; then
+              echo "V_MAJOR=v${V_MAJOR}" >> $GITHUB_ENV
+            fi
+
+            echo "V_MAJOR_MINOR=v${V_MAJOR}.${V_MINOR}" >> $GITHUB_ENV
+
+            V_MAJOR_MINOR_PATCH="v${V_MAJOR}.${V_MINOR}.${V_PATCH}"
+            echo "V_FULL=${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA}" >> $GITHUB_ENV
+
+            echo "IMAGE_VERSION=latest" >> $GITHUB_ENV
+
+            echo "✅ Valid version tag (${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA})"
+
+          else
+
+            COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+            DATE_TIME=$(date -u +'%Y%m%d-%H%M%S') # Ensure this is in UTC
+            DEV_BUILD="build-${DATE_TIME}-${COMMIT_SHA}"
+            echo "V_FULL=${DEV_BUILD}" >> $GITHUB_ENV
+
+            echo "IMAGE_VERSION=${IMAGE_VERSION_DEV}" >> $GITHUB_ENV
+
+            echo "❌ Invalid version tag (${GITHUB_REF})"
+            echo "... will create '${DEV_BUILD}' and tag as '${IMAGE_VERSION_DEV}'"
+            if [[ "${LOCAL_WORKFLOW}" == "true" ]]; then
+              echo "[OPTIONALLY] override locally with an ENV if required, e.g. --env GITHUB_REF=refs/tags/v1.2.3"
+            fi
+
+          fi
+
+      # https://github.com/actions/checkout/
+      # https://github.com/marketplace/actions/checkout
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # https://github.com/sigstore/cosign-installer
+      # https://github.com/marketplace/actions/cosign-installer
+      - name: Install cosign
+        if: ${{ env.IMAGE_SIGNING == 'true' }}
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.5.2'
+
+      # https://github.com/docker/setup-qemu-action/
+      # https://github.com/marketplace/actions/docker-setup-qemu
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Set up BuildKit Docker container builder to be able to build
+      # multi-platform images and export cache
+      # https://github.com/docker/setup-buildx-action
+      # https://github.com/marketplace/actions/docker-setup-buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login against a Docker registry
+      # https://github.com/docker/login-action
+      # https://github.com/marketplace/actions/docker-login
+      - name: Login to registry ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      # https://github.com/marketplace/actions/docker-metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,${{ env.IMAGE_VERSION }}
+            type=raw,${{ env.V_FULL }}
+            type=raw,enable=${{ env.IMAGE_VERSION != env.IMAGE_VERSION_DEV }},${{ env.V_MAJOR_MINOR }}
+            type=raw,enable=${{ env.IMAGE_VERSION != env.IMAGE_VERSION_DEV && env.V_MAJOR != '0' }},${{ env.V_MAJOR }}
+          # ^ NOTE: first tag in list, or overridden with highest 'priority=' value, will populate 'opencontainers.image.version'
+          # labels: |
+          #   org.opencontainers.image.description=${{ env.V_FULL }}
+          # annotations: |
+          #   org.opencontainers.image.description=${{ env.V_FULL }}
+
+      # Build and push Docker image with Buildx
+      # https://github.com/docker/build-push-action
+      # https://github.com/marketplace/actions/build-and-push-docker-images
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          file: timecode/Dockerfile-alpine.latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+
+      # Sign the resulting Docker image digest.
+      # This will only write to the public Rekor transparency log when the Docker
+      # repository is public to avoid leaking data.  If you would like to publish
+      # transparency data even for private images, pass --force to cosign below.
+      # https://github.com/sigstore/cosign
+      - name: Sign the published Docker image
+        if: ${{ env.IMAGE_SIGNING == 'true' }}
+        env:
+          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: |
+          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
