@@ -602,5 +602,58 @@ class TestHealthcheckModule(unittest.TestCase):
         self.check_healthcheck(requests.delete)
 
 
+class TestHeartbeatModule(unittest.TestCase):
+    """
+    Tests the cases for the Heartbeat module.
+    The Heartbeat module should return a simple 'thump, thump' for interaction of any
+    verb (HEAD, GET, POST, DELETE, etc). More importantly, the logs should show evidence
+    of heartbeat by way of a unique logger code (100) and identification to enable later filtering.
+    """
+
+    url = "http://localhost"
+    port = 1210
+    expected_response_code = 200
+    expected_response_text = "thump, thump"
+    expected_log_type = 100
+    expected_log_text = "HEARTBEAT"
+    expected_server_header = "Heartbeat Test"
+
+    def check_heartbeat(self, method):
+        response = method(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_response_text, response.text)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_head_heartbeat_response(self):
+        """Test the HEAD request to the heartbeat endpoint."""
+        response = requests.head(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_get_heartbeat_response(self):
+        """Test the GET request to the heartbeat endpoint."""
+        self.check_heartbeat(requests.get)
+
+    def test_post_heartbeat_response(self):
+        """Test the POST request to the heartbeat endpoint."""
+        self.check_heartbeat(requests.post)
+
+    def test_delete_heartbeat_response(self):
+        """Test the DELETE request to the heartbeat endpoint."""
+        self.check_heartbeat(requests.delete)
+
+
 if __name__ == "__main__":
     unittest.main()
