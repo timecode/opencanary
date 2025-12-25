@@ -554,5 +554,159 @@ class TestRDPModule(unittest.TestCase):
         self.assertEqual(last_log["dst_port"], 3389)
 
 
+class TestHealthcheckModule(unittest.TestCase):
+    """
+    Tests the cases for the Healthcheck module.
+    The Healthcheck module should return a simple 'OK' for interaction of any
+    verb (HEAD, GET, POST, DELETE, etc). Nothing should be logged.
+    """
+
+    url = "http://localhost"
+    port = 1200
+    expected_response_code = 200
+    expected_response_text = "OK"
+    expected_server_header = "Healthcheck Test"
+
+    def check_healthcheck(self, method):
+        last_log_pre = get_last_log()
+        response = method(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_response_text, response.text)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log_post = get_last_log()
+        self.assertEqual(last_log_post, last_log_pre)
+
+    def test_head_healthcheck_response(self):
+        """Test the HEAD request to the healthcheck endpoint."""
+        last_log_pre = get_last_log()
+        response = requests.head(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log_post = get_last_log()
+        self.assertEqual(last_log_post, last_log_pre)
+
+    def test_get_healthcheck_response(self):
+        """Test the GET request to the healthcheck endpoint."""
+        self.check_healthcheck(requests.get)
+
+    def test_post_healthcheck_response(self):
+        """Test the POST request to the healthcheck endpoint."""
+        self.check_healthcheck(requests.post)
+
+    def test_delete_healthcheck_response(self):
+        """Test the DELETE request to the healthcheck endpoint."""
+        self.check_healthcheck(requests.delete)
+
+
+class TestHeartbeatModule(unittest.TestCase):
+    """
+    Tests the cases for the Heartbeat module.
+    The Heartbeat module should return a simple 'thump, thump' for interaction of any
+    verb (HEAD, GET, POST, DELETE, etc). More importantly, the logs should show evidence
+    of heartbeat by way of a unique logger code (100) and identification to enable later filtering.
+    """
+
+    url = "http://localhost"
+    port = 1210
+    expected_response_code = 200
+    expected_response_text = "thump, thump"
+    expected_log_type = 100
+    expected_log_text = "HEARTBEAT"
+    expected_server_header = "Heartbeat Test"
+
+    def check_heartbeat(self, method):
+        response = method(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_response_text, response.text)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_head_heartbeat_response(self):
+        """Test the HEAD request to the heartbeat endpoint."""
+        response = requests.head(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_get_heartbeat_response(self):
+        """Test the GET request to the heartbeat endpoint."""
+        self.check_heartbeat(requests.get)
+
+    def test_post_heartbeat_response(self):
+        """Test the POST request to the heartbeat endpoint."""
+        self.check_heartbeat(requests.post)
+
+    def test_delete_heartbeat_response(self):
+        """Test the DELETE request to the heartbeat endpoint."""
+        self.check_heartbeat(requests.delete)
+
+
+class TestAlarmcheckModule(unittest.TestCase):
+    """
+    Tests the cases for the Alarmcheck module.
+    The Alarmcheck module should return a simple 'ring, ring' for interaction of any
+    verb (HEAD, GET, POST, DELETE, etc). More importantly, the logs should show evidence
+    of the alarmcheck by way of a unique logger code (101) and identification to enable later filtering.
+    """
+
+    url = "http://localhost"
+    port = 1211
+    expected_response_code = 200
+    expected_response_text = "ring, ring"
+    expected_log_type = 101
+    expected_log_text = "ALARMCHECK"
+    expected_server_header = "Alarmcheck Test"
+
+    def check_alarmcheck(self, method):
+        response = method(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_response_text, response.text)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_head_alarmcheck_response(self):
+        """Test the HEAD request to the alarmcheck endpoint."""
+        response = requests.head(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_get_alarmcheck_response(self):
+        """Test the GET request to the alarmcheck endpoint."""
+        self.check_alarmcheck(requests.get)
+
+    def test_post_alarmcheck_response(self):
+        """Test the POST request to the alarmcheck endpoint."""
+        self.check_alarmcheck(requests.post)
+
+    def test_delete_alarmcheck_response(self):
+        """Test the DELETE request to the alarmcheck endpoint."""
+        self.check_alarmcheck(requests.delete)
+
+
 if __name__ == "__main__":
     unittest.main()
