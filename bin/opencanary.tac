@@ -5,6 +5,7 @@ from twisted.application import service
 from pkg_resources import iter_entry_points
 
 from opencanary.modules.healthcheck import Healthcheck
+from opencanary.modules.heartbeat import Heartbeat
 from opencanary.config import config, is_docker
 from opencanary.logger import getLogger
 from opencanary.modules.http import CanaryHTTP
@@ -38,6 +39,7 @@ warnings.warn = warn
 ENTRYPOINT = "canary.usermodule"
 MODULES = [
     Healthcheck,
+    Heartbeat,
     CanaryFTP,
     CanaryGit,
     CanaryHTTP,

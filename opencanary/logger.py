@@ -54,6 +54,7 @@ def getLogger(config):
 
 
 class LoggerBase(object):
+    LOG_HEARTBEAT = 100
     LOG_BASE_BOOT = 1000
     LOG_BASE_MSG = 1001
     LOG_BASE_DEBUG = 1002
