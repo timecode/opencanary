@@ -655,5 +655,58 @@ class TestHeartbeatModule(unittest.TestCase):
         self.check_heartbeat(requests.delete)
 
 
+class TestAlarmcheckModule(unittest.TestCase):
+    """
+    Tests the cases for the Alarmcheck module.
+    The Alarmcheck module should return a simple 'ring, ring' for interaction of any
+    verb (HEAD, GET, POST, DELETE, etc). More importantly, the logs should show evidence
+    of the alarmcheck by way of a unique logger code (101) and identification to enable later filtering.
+    """
+
+    url = "http://localhost"
+    port = 1211
+    expected_response_code = 200
+    expected_response_text = "ring, ring"
+    expected_log_type = 101
+    expected_log_text = "ALARMCHECK"
+    expected_server_header = "Alarmcheck Test"
+
+    def check_alarmcheck(self, method):
+        response = method(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_response_text, response.text)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_head_alarmcheck_response(self):
+        """Test the HEAD request to the alarmcheck endpoint."""
+        response = requests.head(f"{self.url}:{self.port}/")
+
+        self.assertEqual(self.expected_response_code, response.status_code)
+        self.assertIn(self.expected_server_header, response.headers.get("Server"))
+
+        last_log = get_last_log()
+        self.assertEqual(self.port, last_log["dst_port"])
+        self.assertEqual(self.expected_log_type, last_log["logtype"])
+        self.assertIn(self.expected_log_text, str(last_log["logdata"]))
+
+    def test_get_alarmcheck_response(self):
+        """Test the GET request to the alarmcheck endpoint."""
+        self.check_alarmcheck(requests.get)
+
+    def test_post_alarmcheck_response(self):
+        """Test the POST request to the alarmcheck endpoint."""
+        self.check_alarmcheck(requests.post)
+
+    def test_delete_alarmcheck_response(self):
+        """Test the DELETE request to the alarmcheck endpoint."""
+        self.check_alarmcheck(requests.delete)
+
+
 if __name__ == "__main__":
     unittest.main()
