@@ -1,0 +1,52 @@
+FROM alpine:latest
+
+ENV LLC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    LANGUAGE=en_US.UTF-8
+
+LABEL org.opencontainers.image.type="alpine"
+LABEL org.opencontainers.image.title="OpenCanary"
+LABEL org.opencontainers.image.description="A multi-protocol network honeypot!"
+
+RUN apk --no-cache upgrade
+
+RUN apk --no-cache add \
+      --update \
+        ca-certificates \
+        musl-dev \
+        bash \
+        openssl \
+        python3-dev \
+        py3-pip \
+ && pip install --no-cache-dir --break-system-packages \
+      --upgrade \
+        pip
+
+ENV OPENCANARY_PATH=/usr/share/opencanary
+WORKDIR ${OPENCANARY_PATH}
+COPY bin ./bin
+COPY opencanary ./opencanary
+COPY requirements.txt .
+COPY setup.py .
+
+RUN apk --no-cache add \
+      --virtual build-deps \
+        gcc \
+ && pip install --no-cache-dir --break-system-packages \
+      --upgrade \
+      --requirement requirements.txt \
+ && apk del --force build-deps
+
+# The opencanary config can be bound to a volume mount at launch
+# e.g. `--volume <path-to-conf-file>:/etc/opencanaryd/opencanary.conf`
+# However, if it really needs to be hard-coded into the image...
+# 1. whitelist <path-to-conf-file-in-docker-build-context> in the .dockerignore file
+# 2. modify and uncomment the following line:
+# COPY <path-to-conf-file-in-docker-build-context> /etc/opencanaryd/opencanary.conf
+
+COPY timecode/scripts /scripts
+RUN chmod +x /scripts/*.sh
+
+COPY timecode/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+CMD [ "/entrypoint.sh" ]

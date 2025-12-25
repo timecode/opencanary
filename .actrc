@@ -1,0 +1,6 @@
+--container-architecture=linux/amd64
+# --secret-file=.secrets
+# --var-file=.vars
+# --env-file=.env
+# --bind
+--rm
