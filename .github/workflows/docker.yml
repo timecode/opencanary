@@ -171,6 +171,8 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILD=${{ env.V_FULL }}
           push: true
 
       # Sign the resulting Docker image digest.

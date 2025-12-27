@@ -4,9 +4,13 @@ ENV LLC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8 \
     LANGUAGE=en_US.UTF-8
 
+ARG BUILD=unknown
+ENV BUILD=${BUILD}
+
 LABEL org.opencontainers.image.type="alpine"
 LABEL org.opencontainers.image.title="OpenCanary"
 LABEL org.opencontainers.image.description="A multi-protocol network honeypot!"
+LABEL org.opencontainers.build=${BUILD}
 
 RUN apk --no-cache upgrade
 
