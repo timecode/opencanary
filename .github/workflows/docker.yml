@@ -67,21 +67,21 @@ jobs:
             V_PATCH="${BASH_REMATCH[3]}"
             V_BUILD_METADATA="${BASH_REMATCH[4]}"
 
-            # Replace leading + with '.post' if it exists (as docker/metadata-action insists on replacing `+` with `-`)
-            if [[ "${V_BUILD_METADATA}" == +* ]]; then
-                V_BUILD_METADATA=".post${V_BUILD_METADATA:1}"
+            if [[ -z "${V_BUILD_METADATA}" ]]; then
+                if [[ "${V_MAJOR}" -ne 0 ]]; then
+                    echo "V_MAJOR=v${V_MAJOR}" >> $GITHUB_ENV
+                fi
+                echo "V_MAJOR_MINOR=v${V_MAJOR}.${V_MINOR}" >> $GITHUB_ENV
+                echo "IMAGE_VERSION=latest" >> $GITHUB_ENV
+            else
+                # Replace leading + with '.post' if it exists (as docker/metadata-action insists on replacing `+` with `-`)
+                if [[ "${V_BUILD_METADATA}" == +* ]]; then
+                    V_BUILD_METADATA=".post${V_BUILD_METADATA:1}"
+                fi
             fi
-
-            if [[ "${V_MAJOR}" -ne 0 ]]; then
-              echo "V_MAJOR=v${V_MAJOR}" >> $GITHUB_ENV
-            fi
-
-            echo "V_MAJOR_MINOR=v${V_MAJOR}.${V_MINOR}" >> $GITHUB_ENV
 
             V_MAJOR_MINOR_PATCH="v${V_MAJOR}.${V_MINOR}.${V_PATCH}"
             echo "V_FULL=${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA}" >> $GITHUB_ENV
-
-            echo "IMAGE_VERSION=latest" >> $GITHUB_ENV
 
             echo "✅ Valid version tag (${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA})"
 
@@ -146,10 +146,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,${{ env.IMAGE_VERSION }}
+            type=raw,enable=${{ env.IMAGE_VERSION != '' && env.IMAGE_VERSION != null }},${{ env.IMAGE_VERSION }}
             type=raw,${{ env.V_FULL }}
-            type=raw,enable=${{ env.IMAGE_VERSION != env.IMAGE_VERSION_DEV }},${{ env.V_MAJOR_MINOR }}
-            type=raw,enable=${{ env.IMAGE_VERSION != env.IMAGE_VERSION_DEV && env.V_MAJOR != '0' }},${{ env.V_MAJOR }}
+            type=raw,enable=${{ env.V_MAJOR_MINOR != '' && env.V_MAJOR_MINOR != null }},${{ env.V_MAJOR_MINOR }}
+            type=raw,enable=${{ env.V_MAJOR != '' && env.V_MAJOR != null }},${{ env.V_MAJOR }}
           # ^ NOTE: first tag in list, or overridden with highest 'priority=' value, will populate 'opencontainers.image.version'
           # labels: |
           #   org.opencontainers.image.description=${{ env.V_FULL }}
