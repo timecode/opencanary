@@ -22,7 +22,7 @@ To keep it up-to-date:
    # or
    git merge upstream/master --allow-unrelated-histories
 
-   # Resolve conflicts: open the conflicting files, make changes,  and then mark them as resolved
+   # Resolve conflicts: open the conflicting files, make changes, and then mark them as resolved
    git add <resolved_file>
 
    git commit -m "Merged changes from upstream/master"
@@ -83,6 +83,8 @@ To keep it up-to-date:
 
    # to initiate a 'production-like' versioned build and publish...
    act -j build-and-publish --env GITHUB_REF=refs/tags/v1.2.3
+   # for an interim/update version ...
+   # act -j build-and-publish --env GITHUB_REF=refs/tags/v1.2.3+1
    ```
 
 ### Remote build
