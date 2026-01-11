@@ -67,17 +67,18 @@ jobs:
             V_PATCH="${BASH_REMATCH[3]}"
             V_BUILD_METADATA="${BASH_REMATCH[4]}"
 
-            if [[ -z "${V_BUILD_METADATA}" ]]; then
+            if [[ -z "${V_BUILD_METADATA}" || "${V_BUILD_METADATA}" == +* ]]; then
+
+                # Replace leading + with '.post' if it exists (as docker/metadata-action insists on replacing `+` with `-`)
+                if [[ "${V_BUILD_METADATA}" == +* ]]; then
+                    V_BUILD_METADATA=".post${V_BUILD_METADATA:1}"
+                fi
+
                 if [[ "${V_MAJOR}" -ne 0 ]]; then
                     echo "V_MAJOR=v${V_MAJOR}" >> $GITHUB_ENV
                 fi
                 echo "V_MAJOR_MINOR=v${V_MAJOR}.${V_MINOR}" >> $GITHUB_ENV
                 echo "IMAGE_VERSION=latest" >> $GITHUB_ENV
-            else
-                # Replace leading + with '.post' if it exists (as docker/metadata-action insists on replacing `+` with `-`)
-                if [[ "${V_BUILD_METADATA}" == +* ]]; then
-                    V_BUILD_METADATA=".post${V_BUILD_METADATA:1}"
-                fi
             fi
 
             V_MAJOR_MINOR_PATCH="v${V_MAJOR}.${V_MINOR}.${V_PATCH}"
