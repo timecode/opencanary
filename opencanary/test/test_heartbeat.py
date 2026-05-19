@@ -11,7 +11,6 @@ import pytest
 
 from helpers import get_last_log
 
-
 PORT = 1210
 URL = f"http://localhost:{PORT}/"
 EXPECTED_SERVER_HEADER = "Heartbeat Test"
@@ -39,7 +38,11 @@ def test_head_heartbeat_response():
     assert_heartbeat_log()
 
 
-@pytest.mark.parametrize("method", [requests.get, requests.post, requests.delete], ids=["get", "post", "delete"])
+@pytest.mark.parametrize(
+    "method",
+    [requests.get, requests.post, requests.delete],
+    ids=["get", "post", "delete"],
+)
 def test_heartbeat_response(method):
     """
     Test GET, POST, and DELETE requests to the heartbeat endpoint.

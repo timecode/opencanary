@@ -9,11 +9,25 @@ env:
 
 jobs:
 
+  precommit-tests:
+    runs-on: ubuntu-latest # see .actrc for assignment of ubuntu-latest
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_LATEST }}"
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Check pre-commit is happy
+        run: pre-commit run --all-files
+
   # latest version of os / python and local only
   opencanary-tests-local:
     env:
       UV_SYSTEM_PYTHON: 1
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest # see .actrc for assignment of ubuntu-latest
     steps:
       - name: Local only
         if: ${{ env.LOCAL_WORKFLOW != 'true' }}

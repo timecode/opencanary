@@ -10,7 +10,6 @@ import pytest
 
 from helpers import get_last_log
 
-
 PORT = 1200
 URL = f"http://localhost:{PORT}/"
 EXPECTED_SERVER_HEADER = "Healthcheck Test"
@@ -29,7 +28,11 @@ def test_head_healthcheck_response():
     assert get_last_log() == last_log_pre
 
 
-@pytest.mark.parametrize("method", [requests.get, requests.post, requests.delete], ids=["get", "post", "delete"])
+@pytest.mark.parametrize(
+    "method",
+    [requests.get, requests.post, requests.delete],
+    ids=["get", "post", "delete"],
+)
 def test_healthcheck_response(method):
     """
     Test GET, POST, and DELETE requests to the healthcheck endpoint.

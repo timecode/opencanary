@@ -71,10 +71,11 @@ To keep it up-to-date:
 
    ```sh
    # use --bind here so that pre-commit can make adjustments to local repo code formatting
-   act -W .github/workflows_offline -j precommit_tests --bind
+   act -j precommit-tests --bind
+   # act -W .github/workflows_offline -j precommit_tests --bind
 
    # sadly, act won't be able to handle all/any of the OS options asked of the upstream opencanary_tests action
-   # therefore a simpler suite of tests, using a known/trusted 'core os' (ubuntu-22.04) and a single/recent
+   # therefore a simpler suite of tests, using a known/trusted 'core os' (ubuntu-latest) and a single/recent
    # version of python, is available now by running:
    act -j opencanary-tests
 
