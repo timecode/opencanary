@@ -11,14 +11,12 @@ env:
   IMAGE_SIGNING: false
   LOCAL_WORKFLOW: ${{ secrets.LOCAL_WORKFLOW == 'true' }}
 
-  IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
   REGISTRY: ghcr.io                     # default: docker.io
+  REPO_NAME: ${{ github.repository }}   # github.repository as <account>/<repo>
+  IMAGE_NAME_DEFAULT: opencanary
 
-  V_FULL: ""                            # def (set below), examples: v1.2.3 | build-20251220-230408
-  V_MAJOR: ""                           # def (set below), examples: v1
-  V_MAJOR_MINOR: ""                     # def (set below), examples: v1.2
-  IMAGE_VERSION: ""                     # def (set below), examples: latest | dev
-  IMAGE_VERSION_DEV: "dev"              # default description/name to use
+  DOCKER_IMAGE_BADGE_LATEST: "latest"
+  DOCKER_IMAGE_BADGE_DEV: "dev"
 
 jobs:
   # Each job runs in a FRESH INSTANCE of the virtual environment specified by runs-on
@@ -47,18 +45,25 @@ jobs:
         run: |
           uname -a
 
+      - name: Set build date
+        id: build_date
+        run: echo "iso_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       # - name: set env.LOCAL_WORKFLOW based on ACT
       #   run: |
       #     echo "LOCAL_WORKFLOW=${{ env.ACT }}" >> $GITHUB_ENV
 
-      - name: set env.IMAGE_SIGNING based on LOCAL_WORKFLOW
-        if: ${{ env.IMAGE_SIGNING == 'true' }}
+      - name: Set image signing based on LOCAL_WORKFLOW
+        id: signing
         run: |
-          if [[ "${LOCAL_WORKFLOW}" == "true" ]]; then
-            echo "IMAGE_SIGNING=false" >> $GITHUB_ENV
+          if [[ "${LOCAL_WORKFLOW}" == "true" ]] || [[ "${IMAGE_SIGNING}" == "false" ]] ; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Determine Image Tags
+        id: version
         run: |
           if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+)([+-][0-9A-Za-z+-.]*)?$ ]]; then
 
@@ -75,14 +80,14 @@ jobs:
                 fi
 
                 if [[ "${V_MAJOR}" -ne 0 ]]; then
-                    echo "V_MAJOR=v${V_MAJOR}" >> $GITHUB_ENV
+                    echo "major=v${V_MAJOR}" >> "$GITHUB_OUTPUT"
                 fi
-                echo "V_MAJOR_MINOR=v${V_MAJOR}.${V_MINOR}" >> $GITHUB_ENV
-                echo "IMAGE_VERSION=latest" >> $GITHUB_ENV
+                echo "major_minor=v${V_MAJOR}.${V_MINOR}" >> "$GITHUB_OUTPUT"
+                echo "badge=${DOCKER_IMAGE_BADGE_LATEST}" >> "$GITHUB_OUTPUT"
             fi
 
             V_MAJOR_MINOR_PATCH="v${V_MAJOR}.${V_MINOR}.${V_PATCH}"
-            echo "V_FULL=${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA}" >> $GITHUB_ENV
+            echo "full=${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA}" >> "$GITHUB_OUTPUT"
 
             echo "✅ Valid version tag (${V_MAJOR_MINOR_PATCH}${V_BUILD_METADATA})"
 
@@ -91,12 +96,12 @@ jobs:
             COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
             DATE_TIME=$(date -u +'%Y%m%d-%H%M%S') # Ensure this is in UTC
             DEV_BUILD="build-${DATE_TIME}-${COMMIT_SHA}"
-            echo "V_FULL=${DEV_BUILD}" >> $GITHUB_ENV
+            echo "full=${DEV_BUILD}" >> "$GITHUB_OUTPUT"
 
-            echo "IMAGE_VERSION=${IMAGE_VERSION_DEV}" >> $GITHUB_ENV
+            echo "badge=${DOCKER_IMAGE_BADGE_DEV}" >> "$GITHUB_OUTPUT"
 
             echo "❌ Invalid version tag (${GITHUB_REF})"
-            echo "... will create '${DEV_BUILD}' and tag as '${IMAGE_VERSION_DEV}'"
+            echo "... will create '${DEV_BUILD}' and tag as '${DOCKER_IMAGE_BADGE_DEV}'"
             if [[ "${LOCAL_WORKFLOW}" == "true" ]]; then
               echo "[OPTIONALLY] override locally with an ENV if required, e.g. --env GITHUB_REF=refs/tags/v1.2.3"
             fi
@@ -112,27 +117,27 @@ jobs:
       # https://github.com/marketplace/actions/cosign-installer
       - name: Install cosign
         if: ${{ env.IMAGE_SIGNING == 'true' }}
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4
         with:
-          cosign-release: 'v2.5.2'
+          cosign-release: 'v3.0.6'
 
       # https://github.com/docker/setup-qemu-action/
       # https://github.com/marketplace/actions/docker-setup-qemu
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       # Set up BuildKit Docker container builder to be able to build
       # multi-platform images and export cache
       # https://github.com/docker/setup-buildx-action
       # https://github.com/marketplace/actions/docker-setup-buildx
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Login against a Docker registry
       # https://github.com/docker/login-action
       # https://github.com/marketplace/actions/docker-login
       - name: Login to registry ${{ env.REGISTRY }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -141,28 +146,28 @@ jobs:
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
       # https://github.com/marketplace/actions/docker-metadata-action
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata (default)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME_DEFAULT }}
           tags: |
-            type=raw,enable=${{ env.IMAGE_VERSION != '' && env.IMAGE_VERSION != null }},${{ env.IMAGE_VERSION }}
-            type=raw,${{ env.V_FULL }}
-            type=raw,enable=${{ env.V_MAJOR_MINOR != '' && env.V_MAJOR_MINOR != null }},${{ env.V_MAJOR_MINOR }}
-            type=raw,enable=${{ env.V_MAJOR != '' && env.V_MAJOR != null }},${{ env.V_MAJOR }}
-          # ^ NOTE: first tag in list, or overridden with highest 'priority=' value, will populate 'opencontainers.image.version'
+            type=raw,enable=${{ (steps.version.outputs.badge != '') }},${{ steps.version.outputs.badge }}
+            type=raw,${{ steps.version.outputs.full }}
+            type=raw,enable=${{ (steps.version.outputs.major != '') }},${{ steps.version.outputs.major }}
+            type=raw,enable=${{ (steps.version.outputs.major_minor != '') }},${{ steps.version.outputs.major_minor }}
+          # ^ NOTE: first (enabled) tag in list, or overridden with highest 'priority=' value, will populate 'opencontainers.image.version'
           # labels: |
-          #   org.opencontainers.image.description=${{ env.V_FULL }}
+          #   org.opencontainers.image.description=${{ steps.version.outputs.full }}
           # annotations: |
-          #   org.opencontainers.image.description=${{ env.V_FULL }}
+          #   org.opencontainers.image.description=${{ steps.version.outputs.full }}
 
       # Build and push Docker image with Buildx
       # https://github.com/docker/build-push-action
       # https://github.com/marketplace/actions/build-and-push-docker-images
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v6
+      - name: Build and push Docker image (default)
+        id: build-and-push-default
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64
           context: .
@@ -173,7 +178,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            BUILD=${{ env.V_FULL }}
+            BUILD=${{ steps.version.outputs.full }}
+            BUILD_DATE=${{ steps.build_date.outputs.iso_date }}
           push: true
 
       # Sign the resulting Docker image digest.
@@ -181,12 +187,12 @@ jobs:
       # repository is public to avoid leaking data.  If you would like to publish
       # transparency data even for private images, pass --force to cosign below.
       # https://github.com/sigstore/cosign
-      - name: Sign the published Docker image
-        if: ${{ env.IMAGE_SIGNING == 'true' }}
+      - name: Sign the published Docker image (default)
+        if: steps.signing.outputs.enabled == 'true'
         env:
           # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          DIGEST: ${{ steps.build-and-push-default.outputs.digest }}
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
         run: |
