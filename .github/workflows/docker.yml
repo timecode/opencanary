@@ -117,7 +117,7 @@ jobs:
       # https://github.com/marketplace/actions/cosign-installer
       - name: Install cosign
         if: ${{ env.IMAGE_SIGNING == 'true' }}
-        uses: sigstore/cosign-installer@v4
+        uses: sigstore/cosign-installer@v4.1.0
         with:
           cosign-release: 'v3.0.6'
 
