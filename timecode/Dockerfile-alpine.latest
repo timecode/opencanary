@@ -1,4 +1,41 @@
-FROM alpine:latest
+############################################################
+#                        builder
+############################################################
+FROM alpine:latest AS builder
+
+RUN apk --no-cache add \
+      --update \
+        ca-certificates \
+        musl-dev \
+        bash \
+        openssl \
+        clang \
+        compiler-rt \
+        libpcap-dev \
+        uv \
+ && ln -sf /usr/bin/clang   /usr/bin/cc \
+ && ln -sf /usr/bin/clang++ /usr/bin/c++
+
+WORKDIR /opencanary
+
+# Copy in project files
+COPY pyproject.toml uv.lock ./
+COPY bin /opencanary/bin
+COPY opencanary ./opencanary
+
+# Tell uv which Python version to use
+ENV UV_PYTHON=3.14
+# Note: uv downloaded Pythons go into its install directory cache (by default ~/.local/share/uv)
+# change with (for example) ...
+ENV UV_PYTHON_INSTALL_DIR=/opencanary/.python
+
+# Install dependencies and the package from the uv lockfile
+RUN uv sync --frozen --no-dev --extra required-for-snmp
+
+############################################################
+#                     final image
+############################################################
+FROM alpine:latest AS final
 
 ENV LLC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8 \
@@ -12,34 +49,23 @@ LABEL org.opencontainers.image.title="OpenCanary"
 LABEL org.opencontainers.image.description="A multi-protocol network honeypot!"
 LABEL org.opencontainers.build=${BUILD}
 
-RUN apk --no-cache upgrade
-
-RUN apk --no-cache add \
+RUN apk --no-cache upgrade \
+ && apk --no-cache add \
       --update \
         ca-certificates \
         musl-dev \
         bash \
         openssl \
-        python3-dev \
-        py3-pip \
- && pip install --no-cache-dir --break-system-packages \
-      --upgrade \
-        pip
+        gcc
 
-ENV OPENCANARY_PATH=/usr/share/opencanary
-WORKDIR ${OPENCANARY_PATH}
-COPY bin ./bin
-COPY opencanary ./opencanary
-COPY requirements.txt .
-COPY setup.py .
+WORKDIR /opencanary
 
-RUN apk --no-cache add \
-      --virtual build-deps \
-        gcc \
- && pip install --no-cache-dir --break-system-packages \
-      --upgrade \
-      --requirement requirements.txt \
- && apk del --force build-deps
+# Copy the venv and the uv-managed Python interpreter
+COPY --from=builder /opencanary /opencanary
+# COPY --from=builder /root/.local/share/uv/python /root/.local/share/uv/python
+
+# Use the uv-managed project environment at runtime.
+ENV PATH="/opencanary/.venv/bin:${PATH}"
 
 # The opencanary config can be bound to a volume mount at launch
 # e.g. `--volume <path-to-conf-file>:/etc/opencanaryd/opencanary.conf`
@@ -53,4 +79,5 @@ RUN chmod +x /scripts/*.sh
 
 COPY timecode/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
 CMD [ "/entrypoint.sh" ]
