@@ -33,7 +33,7 @@ OpenCanary is the Open Source version of our commercial [Thinkst Canary](https:/
      - [Samba Setup](#samba-setup)
 - **[Running OpenCanary](#running-opencanary)**
   - [Directly on Linux or macOS](#directly-on-linux-or-macos)
-  - [With docker-compose](#with-docker-compose)
+  - [With docker compose](#with-docker-compose)
   - [With Docker](#with-docker)
 - **[Documentation](#documentation)**
 - **[Project Participation](#project-participation)**
@@ -45,8 +45,8 @@ OpenCanary is the Open Source version of our commercial [Thinkst Canary](https:/
 
 ## Prerequisites
 
-* AMD64: Python 3.7 (Recommended Python 3.7+)
-* ARM64: Python 3.9+
+* AMD64: Python 3.10+
+* ARM64: Python 3.10+
 * _Optional_ SNMP requires the Python library Scapy
 * _Optional_ Samba module needs a working installation of Samba
 * _Optional_ Portscan uses iptables (not nftables) and is only supported on Linux-based operating systems
@@ -60,6 +60,8 @@ OpenCanary is the Open Source version of our commercial [Thinkst Canary](https:/
 
 The OpenCanary installation essentially involves ensuring the Python environment is ready, then installing the OpenCanary Python package (plus optional extras).
 
+If `uv` is installed, you can use it for virtual environment creation and package installation. If it is not installed, the standard `python`/`pip` flow below continues to work.
+
 ### Installation on Ubuntu
 
 Installation on Ubuntu 22.04 LTS or 24.04 LTS:
@@ -68,6 +70,13 @@ $ sudo apt-get install python3-dev python3-pip python3-virtualenv python3-venv p
 $ virtualenv env/
 $ . env/bin/activate
 $ pip install opencanary
+```
+
+Optional `uv` equivalent:
+```
+$ uv venv env
+$ . env/bin/activate
+$ uv pip install opencanary
 ```
 
 Optional extras (if you wish to use the Windows File Share module, and the SNMP module):
@@ -81,6 +90,12 @@ $ pip install scapy pcapy-ng # if you plan to use the SNMP module
 First, create and activate a new Python virtual environment:
 ```
 $ virtualenv env/
+$ . env/bin/activate
+```
+
+Optional `uv` equivalent:
+```
+$ uv venv env
 $ . env/bin/activate
 ```
 
@@ -110,6 +125,12 @@ $ pip install opencanary
 $ pip install scapy pcapy-ng # optional
 ```
 
+With `uv` installed, the equivalent commands are:
+```
+$ uv pip install opencanary
+$ uv pip install scapy pcapy-ng # optional
+```
+
 The Windows File Share (smb) module is not available on macOS.
 
 ### Installation via Git
@@ -122,6 +143,11 @@ $ cd opencanary
 $ python setup.py sdist
 $ cd dist
 $ pip install opencanary-<version>.tar.gz
+```
+
+With `uv` installed, you can replace the final install step with:
+```
+$ uv pip install opencanary-<version>.tar.gz
 ```
 
 ### Use via pkgx
@@ -203,7 +229,7 @@ $ sudo -E pkgx opencanaryd --start --uid=nobody --gid=nogroup
 With the `uid` and `gid` flags, OpenCanary drops root privileges after binding to its ports. This can be changed to other low-privileged user/group or omitted to keep running with root privileges.
 
 
-### With docker-compose
+### With docker compose
 
 The route requires [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) to be installed.
 
@@ -214,12 +240,12 @@ The route requires [Docker](https://docs.docker.com/get-docker/) and [Docker Com
 1. Edit the `ports` section of the `docker-compose.yml` file to enable/disable the desired ports based on the services you have enabled in the config file.
 1. Run the container.
     ```bash
-    docker-compose up latest
+    docker compose up latest
     ```
 
-To view the logs run `docker-compose logs latest`.
+To view the logs run `docker compose logs latest`.
 
-To stop the container run `docker-compose down`.
+To stop the container run `docker compose down`.
 
 To build your own Docker OpenCanary using `docker compose`, head over to our [wiki](https://github.com/thinkst/opencanary/wiki/Using-Dockerised-OpenCanary#building-and-running-your-own-docker-opencanary-image-with-docker-compose)
 
