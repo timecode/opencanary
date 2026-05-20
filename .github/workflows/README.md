@@ -68,9 +68,6 @@ act -q                              # --quiet       run the entire pipeline (def
 act pull_request                    #               run the entire pipeline, triggering a `pull_request` event
 
 act -j run-linter                   # --job         run a specific job (by job ID)
-# e.g. act -j precommit-tests --bind
-# e.g. act -j opencanary-tests-local
-# e.g. act -j build-and-publish
 act -W .github/workflows/tests.yml  # --workflows   run a specific workflow (by path to file(s)) (default: "./.github/workflows/")
 ```
 
