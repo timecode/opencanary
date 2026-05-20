@@ -125,3 +125,6 @@ dmypy.json
 
 # MacOS detritus
 .DS_Store
+
+# Used locally, never commit
+.secrets

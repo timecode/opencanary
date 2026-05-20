@@ -1,0 +1,59 @@
+name: OpenCanary Fork Tests
+
+on:
+  - "push"
+
+env:
+  LOCAL_WORKFLOW: ${{ secrets.LOCAL_WORKFLOW == 'true' }}
+  PYTHON_VERSION: "3.14"
+
+jobs:
+
+  precommit-tests:
+    runs-on: ubuntu-latest # see .actrc for assignment of ubuntu-latest
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Check pre-commit is happy
+        run: pre-commit run --all-files
+
+  # latest version of os / python and local only
+  opencanary-tests-local:
+    env:
+      UV_SYSTEM_PYTHON: 1
+    runs-on: ubuntu-latest # see .actrc for assignment of ubuntu-latest
+    steps:
+      - name: Local only
+        if: ${{ env.LOCAL_WORKFLOW != 'true' }}
+        run: |
+          echo "Skipping... execution is LOCAL only"
+      - name: Checkout repository
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        uses: actions/checkout@v6
+      - name: Install uv
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+          enable-cache: true
+      - name: Set up Python
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: uv python install
+      - name: Install OpenCanary
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: uv sync --locked --dev
+      - name: Copy config file
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: cp opencanary/test/opencanary.conf .
+      - name: Start OpenCanary
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: uv run opencanaryd --start
+      - name: Run Pytest
+        if: ${{ env.LOCAL_WORKFLOW == 'true' }}
+        run: uv run pytest -s
